@@ -1,33 +1,29 @@
 package main
 
 import (
-	"log"
-	"net/http"
+  "log"
+  "net/http"
+
+  "github.com/AvishkaWeebadde/go-server/api"
+  "github.com/AvishkaWeebadde/go-server/middleware"
 )
 
 func main() {
+  const filepathRoot = "."
+  const port = "8080"
 
-	router := http.NewServeMux()
+  // Move apiConfig to middleware package
+  apiCfg := middleware.GetApiConfig()
 
-	srv := &http.Server{
-		Addr:    ":8080",
-		Handler: router,
-	}
+  mux := api.NewRouter()
+  mux.Handle("/app/*", apiCfg.MiddlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
+  mux.HandleRoutes()
 
-	//add prefix /app/ to all file serving routes
-	router.Handle("/app/", http.StripPrefix("/app", http.FileServer(http.Dir("./"))))
+  srv := &http.Server{
+    Addr:    ":" + port,
+    Handler: mux,
+  }
 
-	router.Handle("/", http.FileServer(http.Dir("./")))
-
-	fs := http.FileServer(http.Dir("./assets"))
-	router.Handle("/assets/", http.StripPrefix("/assets/", fs))
-
-	router.HandleFunc("/healthz", handlerHealthz)
-
-	log.Printf("Server started at localhost%s\n", srv.Addr)
-
-	err := srv.ListenAndServe()
-	if err != nil {
-		log.Fatal(err)
-	}
+  log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
+  log.Fatal(srv.ListenAndServe())
 }
